@@ -1,0 +1,9 @@
+Metadata-Version: 2.4
+Name: agent-reliability-harness
+Version: 0.1.0
+Summary: A harness for running LLM agents reliably, observably, and safely.
+Requires-Python: >=3.11
+Requires-Dist: pydantic
+Requires-Dist: requests
+Requires-Dist: python-dotenv
+Requires-Dist: ollama
