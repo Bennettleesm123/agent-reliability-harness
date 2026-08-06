@@ -1,0 +1,9 @@
+[project]
+name = "agent-reliability-harness"
+version = "0.1.0"
+description = "A harness for running LLM agents reliably, observably, and safely."
+requires-python = ">=3.11"
+dependencies = ["pydantic", "requests", "python-dotenv", "ollama"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
