@@ -1,5 +1,6 @@
 from enum import Enum
 from pydantic import BaseModel, Field
+from datetime import datetime, timezone
 
 
 # The role of a message in a conversation. An Enum (not a raw string) so
@@ -61,3 +62,36 @@ class RunResult(BaseModel):
     total_output_tokens: int = Field(ge=0)
     total_latency_ms: float = Field(ge=0)
     error: str | None = None           # error detail, if status is ERROR
+
+class PolicyDecision(str, Enum):
+    ALLOW = "allow"           # execute automatically
+    REQUIRE_APPROVAL = "require_approval"  # ask a human first
+    DENY = "deny"             # refuse outright
+
+# One recorded step within a run — a model call or a tool call.
+class TraceStep(BaseModel):
+    step_number: int
+    kind: str                          # "model_call" or "tool_call"
+    # For model calls:
+    input_tokens: int = Field(default=0, ge=0)
+    output_tokens: int = Field(default=0, ge=0)
+    latency_ms: float = Field(default=0, ge=0)
+    # For tool calls:
+    tool_name: str | None = None
+    tool_args: dict | None = None
+    tool_result: str | None = None
+    policy_decision: str | None = None
+    error: str | None = None
+
+
+# The full trace of one run.
+class Trace(BaseModel):
+    run_id: str
+    goal: str
+    model_id: str
+    started_at: str                    # ISO timestamp
+    steps: list[TraceStep] = Field(default_factory=list)
+    final_status: str | None = None
+    total_input_tokens: int = Field(default=0, ge=0)
+    total_output_tokens: int = Field(default=0, ge=0)
+    total_latency_ms: float = Field(default=0, ge=0)
