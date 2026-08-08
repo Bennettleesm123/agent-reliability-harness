@@ -52,6 +52,7 @@ def run_agent(goal: str, model: ModelInterface, config: RunConfig | None = None)
         tracer.record_step(TraceStep(
             step_number=step + 1,
             kind="model_call",
+            text=response.text,          # NEW: capture the actual response
             input_tokens=response.input_tokens,
             output_tokens=response.output_tokens,
             latency_ms=response.latency_ms,

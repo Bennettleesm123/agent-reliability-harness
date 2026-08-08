@@ -71,12 +71,11 @@ class PolicyDecision(str, Enum):
 # One recorded step within a run — a model call or a tool call.
 class TraceStep(BaseModel):
     step_number: int
-    kind: str                          # "model_call" or "tool_call"
-    # For model calls:
+    kind: str
+    text: str | None = None          # the model's response text (for replay)
     input_tokens: int = Field(default=0, ge=0)
     output_tokens: int = Field(default=0, ge=0)
     latency_ms: float = Field(default=0, ge=0)
-    # For tool calls:
     tool_name: str | None = None
     tool_args: dict | None = None
     tool_result: str | None = None
