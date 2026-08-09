@@ -8,6 +8,8 @@ from pydantic import BaseModel, Field
 class RunConfig(BaseModel):
     max_steps: int = Field(default=10, ge=1)
     timeout_seconds: float = Field(default=120.0, gt=0)
+    max_retries: int = Field(default=3, ge=0)        # retry a failed model call this many times
+    backoff_base: float = Field(default=0.5, gt=0)   # first retry waits this long (seconds)
 
 
 def run_agent(goal: str, model: ModelInterface, config: RunConfig | None = None) -> RunResult:
@@ -33,21 +35,41 @@ def run_agent(goal: str, model: ModelInterface, config: RunConfig | None = None)
                 total_latency_ms=total_latency_ms,
             )
 
-        try:
-            response = model.complete(messages)
-        except Exception as e:
+        # Try the model call, retrying on failure with exponential backoff.
+        response = None
+        last_error = None
+        for attempt in range(config.max_retries + 1):   # +1 = initial try plus retries
+            try:
+                response = model.complete(messages)
+                break                                     # success — stop retrying
+            except Exception as e:
+                last_error = e
+                if attempt < config.max_retries:
+                    # Wait before retrying; the wait grows each attempt.
+                    wait = config.backoff_base * (2 ** attempt)   # 0.5, 1.0, 2.0, ...
+                    time.sleep(wait)
+
+        # All attempts failed -> return ERROR.
+        if response is None:
             tracer.finalize("error", total_input_tokens, total_output_tokens, total_latency_ms)
             return RunResult(
                 status=RunStatus.ERROR, steps_taken=step,
                 total_input_tokens=total_input_tokens,
                 total_output_tokens=total_output_tokens,
-                total_latency_ms=total_latency_ms, error=str(e),
+                total_latency_ms=total_latency_ms, error=str(last_error),
             )
-
         total_input_tokens += response.input_tokens
         total_output_tokens += response.output_tokens
         total_latency_ms += response.latency_ms
-
+        # check timeout AFTER the call — the call itself may have been slow.
+        if time.monotonic() - start_time > config.timeout_seconds:
+            tracer.finalize("timeout", total_input_tokens, total_output_tokens, total_latency_ms)
+            return RunResult(
+                status=RunStatus.TIMEOUT, steps_taken=step + 1,
+                total_input_tokens=total_input_tokens,
+                total_output_tokens=total_output_tokens,
+                total_latency_ms=total_latency_ms,
+            )
         # Record this model call as a trace step.
         tracer.record_step(TraceStep(
             step_number=step + 1,

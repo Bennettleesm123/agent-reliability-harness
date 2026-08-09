@@ -94,3 +94,21 @@ class Trace(BaseModel):
     total_input_tokens: int = Field(default=0, ge=0)
     total_output_tokens: int = Field(default=0, ge=0)
     total_latency_ms: float = Field(default=0, ge=0)
+
+# One evaluation test case: a task plus how to judge success.
+class EvalCase(BaseModel):
+    name: str
+    goal: str
+    # Scoring criteria (all optional — use whichever apply):
+    expected_contains: str | None = None      # answer should contain this text
+    expected_tools: list[str] | None = None   # these tools should be called
+    should_succeed: bool = True               # should the run succeed at all?
+
+
+# The result of running one eval case.
+class EvalResult(BaseModel):
+    case_name: str
+    passed: bool
+    reasons: list[str] = Field(default_factory=list)  # why it passed/failed
+    actual_answer: str | None = None
+    actual_status: str | None = None
