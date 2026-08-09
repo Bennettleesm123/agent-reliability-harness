@@ -1,0 +1,12 @@
+services:
+  harness:
+    build: .
+    environment:
+      # Point the harness at Ollama running on the host machine.
+      - OLLAMA_HOST=http://host.docker.internal:11434
+    # On Linux, host.docker.internal needs this; on Mac/Windows it works by default.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      # Persist traces to the host so they survive the container.
+      - ./runs:/app/runs
